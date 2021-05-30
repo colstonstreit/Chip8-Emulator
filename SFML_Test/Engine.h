@@ -1,11 +1,12 @@
-#ifndef GUARD_ENGINE_H
-#define GUARD_ENGINE_H
+#pragma once
 
 #include <SFML/Graphics.hpp>
 #include <SFML/Window.hpp>
 #include <SFML/Network.hpp>
 #include <SFML/Audio.hpp>
 #include <SFML/System.hpp>
+
+#include "Renderer.h"
 
 #ifdef __DEBUG__
 #include <iostream>
@@ -14,42 +15,54 @@
 #define LOG(x)
 #endif
 
-
 class Engine {
 
 public:
-	sf::RenderWindow* window = nullptr;
-	const float targetTPS = 60.0f;
-
-private:
-	int fps = 0;
-	int tps = 0;
-	int width, height;
-	std::string title;
-
-	sf::Clock clock;
-	sf::Clock secondClock;
-	sf::CircleShape shape;
-
-public:
-	Engine(int width, int height, std::string title);
+	Engine(const std::string& title, int width, int height, int scale);
 	~Engine();
-	void run();
 
-	int getFPS() const {
-		return fps;
-	}
-	int getTPS() const {
-		return tps;
+	void handleEvents();
+	void displayPixels();
+
+	bool isRunning() {
+		return window.isOpen();
 	}
 
-private:
-	void init();
-	void update(float dt);
-	void render();
-	void handleEvent(sf::Event& event);
+	Renderer renderer;
+	sf::RenderWindow window;
 
 };
 
-#endif // ENGINE_H
+Engine::Engine(const std::string& title, int width, int height, int scale = 1) : 
+	renderer(width, height, scale),
+	window(sf::VideoMode(width * scale, height * scale), title)
+{}
+
+Engine::~Engine() {}
+
+void Engine::handleEvents() {
+
+	sf::Event event;
+	while (window.pollEvent(event)) {
+
+		if (event.type == sf::Event::Closed)
+			window.close();
+
+	}
+}
+
+void Engine::displayPixels() {
+	sf::Image image;
+	sf::Texture texture;
+	sf::Sprite sprite;
+
+	int width = renderer.getWidth(), height = renderer.getHeight(), scale = renderer.getScale();
+
+	image.create(width * scale, height * scale, renderer.getPixels());
+	texture.loadFromImage(image);
+	sprite.setTexture(texture);
+
+	window.draw(sprite);
+	window.display();
+}
 
