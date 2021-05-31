@@ -3,13 +3,13 @@
 
 int main(int argc, char** argv) {
 
-	int width = 65, height = 63, scale = 10;
+	int width = 65, height = 63, scale = 20;
 	Engine engine("Hello World!", width, height, scale);
 
 	int increase = (0xFFFFFFFF - 0x000000FF) / (width * height);
 	int color = 0x000000FF;
 
-	const int tps = 120;
+	const int tps = 20;
 	float usPerTick = 1000000 / tps;
 	sf::Clock clock;
 	
@@ -27,8 +27,6 @@ int main(int argc, char** argv) {
 					if (color < 0x000000FF) color = 0x000000FF;
 				}
 			}
-
-			engine.renderer.fillRect(20, 20, 20, 20, 0xFF0000FF);
 
 			engine.displayPixels();
 		}
