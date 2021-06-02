@@ -24,6 +24,7 @@
     <ProjectGuid>{c37f0cc7-d3a0-4d72-8aed-cfd8fbd4dd00}</ProjectGuid>
     <RootNamespace>SFMLTest</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>Chip-8 Emulator</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

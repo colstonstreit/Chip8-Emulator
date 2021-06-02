@@ -26,6 +26,10 @@ public:
 		return window.isOpen();
 	}
 
+	bool isActive() {
+		return window.hasFocus();
+	}
+
 	Renderer renderer;
 	sf::RenderWindow window;
 	Chip8* chip8;
@@ -37,7 +41,7 @@ private:
 
 Engine::Engine(const std::string& title, int width, int height, int scale = 1) :
 	renderer(width, height, scale),
-	window(sf::VideoMode(width* scale, height* scale), title),
+	window(sf::VideoMode(width* scale, height* scale), title, sf::Style::Close),
 	chip8(nullptr)
 {}
 
@@ -57,6 +61,9 @@ void Engine::handleEvents() {
 
 		if (event.type == sf::Event::KeyReleased) {
 			chip8->setKey(getKeyCode(event.key.code), false);
+			if (event.key.code == sf::Keyboard::Key::P) {
+				chip8->printStatus();
+			}
 		}
 
 	}

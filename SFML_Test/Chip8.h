@@ -20,6 +20,7 @@ public:
 	void loadRom(const char* file);
 	void emulateCycle();
 	sf::Uint32 getPixel(int x, int y);
+	void printStatus();
 
 private:
 	sf::Uint8 RAM[4096];
@@ -28,18 +29,23 @@ private:
 
 	sf::Uint8 delayTimer;
 	sf::Uint8 soundTimer;
+	sf::Clock sixtyHzCounter;
 
 	sf::Uint16 pc;
 	sf::Uint8 sp;
 	sf::Uint16 stack[16];
 
 	bool keypad[16];
-	sf::Uint8 graphics[64 * 32];
+	sf::Uint8 graphics[32][64];
 
 	sf::Uint16 opcode;
 
 	std::default_random_engine randomGen;
 	std::uniform_int_distribution<unsigned int> randomByte;
+
+	sf::Sound tone;
+	sf::SoundBuffer soundBuffer;
+	bool tonePlaying = false;
 
 	// OPS
 	void decodeInstruction(void(Chip8::* &operation)());
@@ -83,6 +89,13 @@ private:
 
 Chip8::Chip8() : randomGen(std::chrono::system_clock::now().time_since_epoch().count()) {
 	randomByte = std::uniform_int_distribution<unsigned int>(0, 0xFF);
+
+	if (!soundBuffer.loadFromFile("ShortBeep.wav")) {
+		printf("Audio file did not load correctly.\n");
+	}
+
+	tone.setBuffer(soundBuffer);
+	tone.play();
 }
 
 void Chip8::init() {
@@ -121,8 +134,9 @@ void Chip8::init() {
 }
 
 void Chip8::setKey(sf::Uint8 key, bool active) {
-	if (key >= 0 && key < 16)
+	if (key >= 0 && key < 16) {
 		keypad[key] = active;
+	}
 }
 
 void Chip8::loadRom(const char* fileName) {
@@ -148,18 +162,76 @@ void Chip8::emulateCycle() {
 	opcode = RAM[pc] << 8 | RAM[pc + 1];
 	pc += 2;
 
-	printf("Opcode: %x\n", opcode);
-
 	// Decode
 	void (Chip8::*operation)() = &Chip8::OP_NULL;
 	decodeInstruction(operation);
 
 	// Execute
 	(this->*operation)();
+	if (sixtyHzCounter.getElapsedTime().asMilliseconds() >= 1000.f / 60.f) {
+		sixtyHzCounter.restart();
+		if (delayTimer > 0) delayTimer--;
+		if (soundTimer > 0) {
+			if (!tonePlaying) {
+				tonePlaying = true;
+				tone.play();
+			}
+			soundTimer--;
+			if (soundTimer == 0) {
+				tonePlaying = false;
+			}
+		}
+	}
 }
 
 inline sf::Uint32 Chip8::getPixel(int x, int y) {
-	return (graphics[y * 32 + x]) ? 0xFFFFFFFF : 0x00000000;
+	return (graphics[y][x]) ? 0xFFFFFFFF : 0x000000FF;
+}
+
+void Chip8::printStatus() {
+
+	printf("\n=================================== STATUS ===================================\n");
+
+	// Opcode
+	printf("Current instruction: %x\n\n", opcode);
+	// Registers
+	printf("Registers:\n");
+	printf("\t");
+	for (int i = 0; i <= 0xF; i++) {
+		printf("%3x ", i);
+	}
+	printf("\n\t");
+	for (int i = 0; i <= 0xF; i++) {
+		printf("%3x ", registers[i]);
+	}
+	printf("\n\n");
+
+	// Stack
+	printf("Stack:\n");
+	printf("\t");
+	for (int i = 0; i < sp; i++) {
+		printf("%4x ", stack[i]);
+	}
+	printf("\n\n");
+
+	// Keypad
+	printf("Keypad:\n");
+	printf("\t");
+	for (int i = 0; i <= 0xF; i++) {
+		printf("%3x ", i);
+	}
+	printf("\n\t");
+	for (int i = 0; i <= 0xF; i++) {
+		printf("%3d ", keypad[i]);
+	}
+	printf("\n\n");
+
+	// Program Counter and Index
+	printf("Program Counter: %d\nIndex: %d\n\n", pc, index);
+
+	// Timers
+	printf("Delay Timer: %d\nSound Timer: %d\n", delayTimer, soundTimer);
+
 }
 
 void Chip8::decodeInstruction(void(Chip8::* &operation)()) {
@@ -386,7 +458,7 @@ void Chip8::OP_8xy4() {
 	// Set Vx = Vx + Vy, set Vf = carry.
 	sf::Uint8 vx = (opcode & 0x0F00) >> 8;
 	sf::Uint8 vy = (opcode & 0x00F0) >> 4;
-	sf::Uint16 sum = vx + vy;
+	sf::Uint16 sum = registers[vx] + registers[vy];
 	registers[vx] = sum & 0xFF;
 	registers[0xF] = (sum > 0xFF) ? 1 : 0;
 }
@@ -459,54 +531,100 @@ void Chip8::OP_Dxyn() {
 		sf::Uint8 byte = RAM[index + i];
 		for (int j = 0; j < 8; j++) {
 			sf::Uint8 bit = (byte >> (7 - j)) & 0x1;
-			sf::Uint32 graphicsIndex = ((startY + i) % 32) * 32 + ((startX + j) % 64);
-			int xorResult = bit ^ graphics[graphicsIndex];
+			if (bit) {
+				if (graphics[startY + i][startX + j]) {
+					registers[0xF] = 1;
+					graphics[startY + i][startX + j] = 0;
+				}
+				else {
+					graphics[startY + i][startX + j] = 1;
+				}
+			}
 		}
 	}
 }
 
-inline void Chip8::OP_Ex9E()
-{
+void Chip8::OP_Ex9E() {
+	// Skip next instruction if key with value in Vx is pressed.
+	sf::Uint8 vx = (opcode & 0x0F00) >> 8;
+	if (keypad[registers[vx]]) {
+		pc += 2;
+	}
 }
 
-inline void Chip8::OP_ExA1()
-{
+void Chip8::OP_ExA1() {
+	// Skip next instruction if key with value in Vx is not pressed.
+	sf::Uint8 vx = (opcode & 0x0F00) >> 8;
+	if (!keypad[registers[vx]]) {
+		pc += 2;
+	}
 }
 
-inline void Chip8::OP_Fx07()
-{
+void Chip8::OP_Fx07() {
+	// Set Vx = delay timer value.
+	sf::Uint8 vx = (opcode & 0x0F00) >> 8;
+	registers[vx] = delayTimer;
 }
 
-inline void Chip8::OP_Fx0A()
-{
+void Chip8::OP_Fx0A() {
+	// Wait for a key press, store the value of the key in Vx.
+	sf::Uint8 vx = (opcode & 0x0F00) >> 8;
+	for (int i = 0; i <= 0xF; i++) {
+		if (keypad[i]) {
+			registers[vx] = i;
+			return;
+		}
+	}
+	pc -= 2;
 }
 
-inline void Chip8::OP_Fx15()
-{
+void Chip8::OP_Fx15() {
+	// Set delay timer = Vx.
+	sf::Uint8 vx = (opcode & 0x0F00) >> 8;
+	delayTimer = registers[vx];
 }
 
-inline void Chip8::OP_Fx18()
-{
+void Chip8::OP_Fx18() {
+	// Set sound timer = Vx.
+	sf::Uint8 vx = (opcode & 0x0F00) >> 8;
+	soundTimer = registers[vx];
 }
 
-inline void Chip8::OP_Fx1E()
-{
+void Chip8::OP_Fx1E() {
+	// Set I = I + Vx.
+	sf::Uint8 vx = (opcode & 0x0F00) >> 8;
+	index += registers[vx];
 }
 
-inline void Chip8::OP_Fx29()
-{
+void Chip8::OP_Fx29() {
+	// Set I = location of sprite for digit Vx.
+	sf::Uint8 vx = (opcode & 0x0F00) >> 8;
+	index = FONTSET_START_ADDRESS + registers[vx] * 5;
 }
 
-inline void Chip8::OP_Fx33()
-{
+void Chip8::OP_Fx33() {
+	// Store BCD representation of Vx in memory locations I, I+1, and I+2.
+	sf::Uint8 vx = (opcode & 0x0F00) >> 8;
+	sf::Uint8 value = registers[vx];
+	RAM[index] = value / 100;
+	RAM[index + 1] = (value % 100) / 10;
+	RAM[index + 2] = value % 10;
 }
 
-inline void Chip8::OP_Fx55()
-{
+void Chip8::OP_Fx55() {
+	// Store registers V0 through Vx in memory starting at location I.
+	sf::Uint8 vx = (opcode & 0x0F00) >> 8;
+	for (int i = 0; i <= vx; i++) {
+		RAM[index + i] = registers[i];
+	}
 }
 
-inline void Chip8::OP_Fx65()
-{
+void Chip8::OP_Fx65() {
+	// Read registers V0 through Vx from memory starting at location I.
+	sf::Uint8 vx = (opcode & 0x0F00) >> 8;
+	for (int i = 0; i <= vx; i++) {
+		registers[i] = RAM[index + i];
+	}
 }
 
 void Chip8::OP_NULL() {}
