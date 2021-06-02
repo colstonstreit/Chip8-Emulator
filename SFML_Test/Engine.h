@@ -7,13 +7,7 @@
 #include <SFML/System.hpp>
 
 #include "Renderer.h"
-
-#ifdef __DEBUG__
-#include <iostream>
-#define LOG(x) (std::cout << (x) << std::endl)
-#else
-#define LOG(x)
-#endif
+#include "Chip8.h"
 
 class Engine {
 
@@ -24,18 +18,27 @@ public:
 	void handleEvents();
 	void displayPixels();
 
+	void setChip8(Chip8* chip8) {
+		this->chip8 = chip8;
+	}
+
 	bool isRunning() {
 		return window.isOpen();
 	}
 
 	Renderer renderer;
 	sf::RenderWindow window;
+	Chip8* chip8;
+
+private:
+	sf::Uint8 getKeyCode(sf::Keyboard::Key key);
 
 };
 
-Engine::Engine(const std::string& title, int width, int height, int scale = 1) : 
+Engine::Engine(const std::string& title, int width, int height, int scale = 1) :
 	renderer(width, height, scale),
-	window(sf::VideoMode(width * scale, height * scale), title)
+	window(sf::VideoMode(width* scale, height* scale), title),
+	chip8(nullptr)
 {}
 
 Engine::~Engine() {}
@@ -48,7 +51,56 @@ void Engine::handleEvents() {
 		if (event.type == sf::Event::Closed)
 			window.close();
 
+		if (event.type == sf::Event::KeyPressed) {
+			chip8->setKey(getKeyCode(event.key.code), true);
+		}
+
+		if (event.type == sf::Event::KeyReleased) {
+			chip8->setKey(getKeyCode(event.key.code), false);
+		}
+
 	}
+}
+
+sf::Uint8 Engine::getKeyCode(sf::Keyboard::Key key) {
+
+	switch (key) {
+	case sf::Keyboard::Key::Num1:
+		return 0x1;
+	case sf::Keyboard::Key::Num2:
+		return 0x2;
+	case sf::Keyboard::Key::Num3:
+		return 0x3;
+	case sf::Keyboard::Key::Num4:
+		return 0xC;
+	case sf::Keyboard::Key::Q:
+		return 0x4;
+	case sf::Keyboard::Key::W:
+		return 0x5;
+	case sf::Keyboard::Key::E:
+		return 0x6;
+	case sf::Keyboard::Key::R:
+		return 0xD;
+	case sf::Keyboard::Key::A:
+		return 0x7;
+	case sf::Keyboard::Key::S:
+		return 0x8;
+	case sf::Keyboard::Key::D:
+		return 0x9;
+	case sf::Keyboard::Key::F:
+		return 0xE;
+	case sf::Keyboard::Key::Z:
+		return 0xA;
+	case sf::Keyboard::Key::X:
+		return 0x0;
+	case sf::Keyboard::Key::C:
+		return 0xB;
+	case sf::Keyboard::Key::V:
+		return 0xF;
+	default:
+		return -1;
+	}
+
 }
 
 void Engine::displayPixels() {
