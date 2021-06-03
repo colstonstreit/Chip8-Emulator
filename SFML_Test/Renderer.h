@@ -10,7 +10,7 @@ public:
 
 	sf::Uint32 getPixel(int x, int y);
 	void setPixel(int x, int y, sf::Uint32 color);
-	void clearDisplay(sf::Uint32 color);
+	void clearDisplay(sf::Uint32 color = 0x000000FF);
 	void fillRect(int x1, int y1, int width, int height, sf::Uint32 color);
 	inline int getWidth() { return width; }
 	inline int getHeight() { return height; }

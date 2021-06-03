@@ -4,30 +4,48 @@
 
 int main(int argc, char** argv) {
 
-	int width = 64, height = 32, scale = 20;
+	int width = 64, height = 32, scale = 10;
 	Engine engine("Chip-8 Emulator", width, height, scale);
 
 	Chip8 chip8;
 	engine.setChip8(&chip8);
+	engine.renderer.clearDisplay();
+	engine.displayPixels();
+
+	const float targetClocksPerSec = 1000.f;
+	float targetMicrosecondDelay = 1000000.f / targetClocksPerSec;
+	sf::Clock clock;
+	sf::Clock fpsClock;
+	const float targetFPS = 20.f;
 
 	chip8.init();
-	chip8.loadRom("ROMS/invaders.rom");
+	chip8.loadRom("Roms/pong.rom");
+
+	bool changedDisplay = false;
 	
 	while (engine.isRunning()) {
 
-			engine.handleEvents();
+		engine.handleEvents();
 
-			if (engine.isActive()) {
-				chip8.emulateCycle();
-			}
+		if (engine.isActive() && clock.getElapsedTime().asMicroseconds() >= targetMicrosecondDelay) {
 
-			for (int y = 0; y < height; y++) {
-				for (int x = 0; x < width; x++) {
-					engine.renderer.setPixel(x, y, chip8.getPixel(x, y));
+			clock.restart();
+			chip8.emulateCycle();
+
+			std::vector<sf::Vector2u>& pixels = chip8.getChangedPixels();
+			if (!pixels.empty()) {
+				for (const sf::Vector2u& pixel : pixels) {
+					engine.renderer.setPixel(pixel.x, pixel.y, chip8.getPixel(pixel.x, pixel.y));
 				}
+				pixels.clear();
+				changedDisplay = true;
 			}
-
+		}
+		if (changedDisplay && fpsClock.getElapsedTime().asMicroseconds() >= 1000000.f / targetFPS) {
 			engine.displayPixels();
+			changedDisplay = false;
+		}
+
 	}
 
 	return 0;

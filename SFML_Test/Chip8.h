@@ -6,6 +6,7 @@
 #include <fstream>
 #include <chrono>
 #include <random>
+#include <vector>
 
 class Chip8 {
 
@@ -22,6 +23,7 @@ public:
 	void emulateCycle();
 	sf::Uint32 getPixel(int x, int y);
 	void printStatus();
+	std::vector<sf::Vector2u>& getChangedPixels() { return changedPixels; }
 
 private:
 	sf::Uint8 RAM[4096];
@@ -47,6 +49,9 @@ private:
 	sf::Sound tone;
 	sf::SoundBuffer soundBuffer;
 	bool tonePlaying = false;
+
+	std::vector<sf::Vector2u> changedPixels;
+	void setPixel(int x, int y, sf::Uint8 value);
 
 	// Operations
 	void decodeInstruction(void(Chip8::* &operation)());

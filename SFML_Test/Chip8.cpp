@@ -146,6 +146,11 @@ void Chip8::printStatus() {
 
 }
 
+void Chip8::setPixel(int x, int y, sf::Uint8 value) {
+	graphics[y][x] = value;
+	changedPixels.emplace_back(x, y);
+}
+
 void Chip8::decodeInstruction(void(Chip8::*& operation)()) {
 	switch ((opcode & 0xF000) >> 12) {
 	case 0x0:
@@ -276,7 +281,11 @@ void Chip8::decodeInstruction(void(Chip8::*& operation)()) {
 
 void Chip8::OP_00E0() {
 	// Clear the display
-	memset(graphics, 0, sizeof(graphics));
+	for (int y = 0; y < 32; y++) {
+		for (int x = 0; x < 64; x++) {
+			setPixel(x, y, 0);
+		}
+	}
 }
 
 void Chip8::OP_00EE() {
@@ -446,10 +455,10 @@ void Chip8::OP_Dxyn() {
 			if (bit) {
 				if (graphics[startY + i][startX + j]) {
 					registers[0xF] = 1;
-					graphics[startY + i][startX + j] = 0;
+					setPixel(startX + j, startY + i, 0);
 				}
 				else {
-					graphics[startY + i][startX + j] = 1;
+					setPixel(startX + j, startY + i, 1);
 				}
 			}
 		}

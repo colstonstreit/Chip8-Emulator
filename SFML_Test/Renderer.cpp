@@ -33,7 +33,7 @@ void Renderer::setPixel(int x, int y, sf::Uint32 color) {
 	}
 }
 
-void Renderer::clearDisplay(sf::Uint32 color = 0x000000FF) {
+void Renderer::clearDisplay(sf::Uint32 color) {
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			setPixel(x, y, color);
