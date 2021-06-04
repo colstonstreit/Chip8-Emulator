@@ -9,7 +9,7 @@
 **/Projects.sln
 **/SFML-2.5.1
 **/*.vcxproj.*
-
+**/*.vcxproj
 
 # User-specific files
 *.rsuser
