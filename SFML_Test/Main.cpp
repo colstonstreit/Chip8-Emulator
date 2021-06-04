@@ -12,14 +12,14 @@ int main(int argc, char** argv) {
 	engine.renderer.clearDisplay();
 	engine.displayPixels();
 
-	const float targetClocksPerSec = 1000.f;
+	const float targetClocksPerSec = 700.f;
 	float targetMicrosecondDelay = 1000000.f / targetClocksPerSec;
 	sf::Clock clock;
 	sf::Clock fpsClock;
 	const float targetFPS = 20.f;
 
 	chip8.init();
-	chip8.loadRom("Roms/pong.rom");
+	chip8.loadRom("Roms/Breakout.ch8");
 
 	bool changedDisplay = false;
 	
